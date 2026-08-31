@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-plugin_id="${PLUGIN_ID:-io.github.tyrichards.orthodox-daily}"
+plugin_id="${PLUGIN_ID:-io.gitlab.alexschex.pan-orthodox-daily}"
 target="${OMARCHY_PLUGIN_DIR:-$HOME/.config/omarchy/plugins/$plugin_id}"
 backup="${target}.upstream-backup"
 

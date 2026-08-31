@@ -4,7 +4,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "io.github.tyrichards.orthodox-daily"
+  moduleName: "io.gitlab.alexschex.pan-orthodox-daily"
 
   function injectPanel() {
     var target = panelLoader.item

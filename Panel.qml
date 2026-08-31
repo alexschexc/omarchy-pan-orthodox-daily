@@ -8,8 +8,8 @@ import "Prayers.js" as Prayers
 
 Panel {
   id: root
-  moduleName: "io.github.tyrichards.orthodox-daily"
-  ipcTarget: "io.github.tyrichards.orthodox-daily"
+  moduleName: "io.gitlab.alexschex.pan-orthodox-daily"
+  ipcTarget: "io.gitlab.alexschex.pan-orthodox-daily"
   manageIpc: false
 
   property var anchorItem: null
@@ -21,13 +21,13 @@ Panel {
 
   property date today: new Date()
   readonly property string todayKey: Model.dateKey(today)
-  readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/omarchy/plugins/io.github.tyrichards.orthodox-daily/"
+  readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/omarchy/plugins/io.gitlab.alexschex.pan-orthodox-daily/"
   readonly property string cachePath: stateDir + "daily.json"
   readonly property string checklistPath: stateDir + "checklist.json"
   readonly property string settingsPath: stateDir + "settings.json"
   readonly property string saintImageCacheDir: stateDir + "saint-images/"
   readonly property string saintImageScript: Quickshell.env("HOME")
-    + "/.config/omarchy/plugins/io.github.tyrichards.orthodox-daily/OcaSaintImages.py"
+    + "/.config/omarchy/plugins/io.gitlab.alexschex.pan-orthodox-daily/OcaSaintImages.py"
 
   property var report: null
   property bool cacheLoaded: false
