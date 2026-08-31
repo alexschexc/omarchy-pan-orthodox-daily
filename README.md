@@ -1,5 +1,12 @@
 # Orthodox Daily
 
+## Attribution
+
+This project is based on the MIT-licensed [Orthodox Daily](https://github.com/TyRichards/omarchy-orthodox-daily) Omarchy plugin.
+
+- [Ty Richards](https://github.com/TyRichards) — original creator of Orthodox Daily.
+- [Josh Land](https://github.com/joshland) — contributed the upstream PR for calendar selection, Greek/Slavic tradition selection, and Bible translation switching including KJV support: [TyRichards/omarchy-orthodox-daily#3](https://github.com/TyRichards/omarchy-orthodox-daily/pull/3).
+
 ![Orthodox Daily overview](https://raw.githubusercontent.com/TyRichards/omarchy-orthodox-daily/main/preview.png)
 
 ![Expanded saint life with OCA icon](https://raw.githubusercontent.com/TyRichards/omarchy-orthodox-daily/main/gallery-saint-life.webp)
