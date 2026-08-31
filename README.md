@@ -15,11 +15,11 @@ It is designed to support both Old Calendar and New Calendar parish life by expo
 
 ![Pan-Orthodox Daily overview](preview.png)
 
-![Saint life expansion](gallery-saint-life.webp)
+![Saint life expansion](gallery-saint-life.png)
 
-![Scripture reading expansion](gallery-scripture.webp)
+![Scripture reading expansion](gallery-scripture.png)
 
-![Prayer expansion](gallery-trisagion.webp)
+![Prayer expansion](gallery-trisagion.png)
 
 ## Features
 
