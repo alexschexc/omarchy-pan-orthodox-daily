@@ -404,7 +404,7 @@ Panel {
 
               Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "PRAYERS"
+                text: "READING"
                 color: Qt.darker(root.contentForeground, 1.4)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.caption
@@ -417,7 +417,7 @@ Panel {
 
                 PrayerCheck {
                   iconText: ""
-                  tooltipText: "Morning prayer"
+                  tooltipText: "Scripture & Psalter"
                   checked: root.morningComplete
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
@@ -427,7 +427,7 @@ Panel {
                 PrayerCheck {
                   iconText: ""
                   iconGap: Style.space(6)
-                  tooltipText: "Evening prayer"
+                  tooltipText: "Spiritual Reading"
                   checked: root.eveningComplete
                   foreground: root.contentForeground
                   fontFamily: root.contentFontFamily
