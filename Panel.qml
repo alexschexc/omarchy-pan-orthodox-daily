@@ -22,7 +22,8 @@ Panel {
   property date today: new Date()
   readonly property string todayKey: Model.dateKey(today)
   readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/omarchy/plugins/io.gitlab.alexschex.pan-orthodox-daily/"
-  readonly property string cachePath: stateDir + "daily.json"
+  readonly property string cacheDir: stateDir + "daily/orthocal/" + tradition + "/" + calendar + "/" + translation + "/"
+  readonly property string cachePath: cacheDir + todayKey + ".json"
   readonly property string checklistPath: stateDir + "checklist.json"
   readonly property string settingsPath: stateDir + "settings.json"
   readonly property string saintImageCacheDir: stateDir + "saint-images/"
@@ -35,9 +36,11 @@ Panel {
   property bool settingsLoaded: false
   property string tradition: "slavic"
   property string calendar: "gregorian"
+  property string translation: "lxx2012-web"
   property var prayerHistory: ({})
   property var storyImages: []
   property string storyImageRequestKey: ""
+  property var weekReports: ({})
   property bool morningComplete: false
   property bool eveningComplete: false
   property string errorMessage: ""
@@ -50,6 +53,7 @@ Panel {
   readonly property var readings: report ? Model.gospelsFirst(report.readings) : []
   readonly property var stories: report ? Model.array(report.stories) : []
   readonly property var weekPrayers: Model.prayerWeek(today, prayerHistory)
+  readonly property var fastingWeek: Model.fastingWeek(today, weekReports)
   readonly property var feasts: report ? Model.array(report.feasts) : []
   readonly property var saints: report ? Model.array(report.saints) : []
   readonly property bool fetching: fetchProc.running
@@ -60,6 +64,7 @@ Panel {
   function open() {
     root.controller.show()
     root.refresh(false)
+    root.refreshWeek()
     Qt.callLater(function() {
       if (root.opened) root.setCenterHoverRevealSuppressed(true)
     })
@@ -90,13 +95,38 @@ Panel {
     if (fetchProc.running) return
 
     var cacheIsFresh = report && Model.reportMatchesDate(report, today, calendar)
-      && Model.reportMatchesSettings(report, tradition, calendar)
+      && Model.reportMatchesSettings(report, tradition, calendar, translation)
       && lastFetchMs > 0 && (Date.now() - lastFetchMs) < 15 * 60 * 1000
     if (useCache === false && cacheIsFresh) return
 
     errorMessage = ""
-    fetchProc.command = ["curl", "-fsS", "--max-time", "12", Model.apiUrl(today, tradition, calendar)]
+    fetchProc.command = ["curl", "-fsS", "--max-time", "12", Model.apiUrl(today, tradition, calendar, translation)]
     fetchProc.running = true
+  }
+
+
+  function refreshWeek() {
+    if (weekFetchProc.running) return
+    weekFetchProc.command = [
+      "python3", "-c",
+      "import datetime,json,sys,urllib.request,pathlib; "
+        + "trad,cal,trans,state,y,m,d=sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]); "
+        + "base=pathlib.Path(state)/'daily'/'orthocal'/trad/cal/trans; base.mkdir(parents=True, exist_ok=True); "
+        + "today=datetime.date(y,m,d); start=today-datetime.timedelta(days=(today.weekday()+1)%7); out={}; "
+        + "\nfor i in range(7):\n"
+        + " day=start+datetime.timedelta(days=i); key=day.isoformat(); path=base/(key+'.json'); "
+        + " url=f'https://orthocal.info/api/{trad}/{cal}/{day.year}/{day.month}/{day.day}/?translation={trans}'; "
+        + " data=None\n"
+        + " try:\n"
+        + "  data=json.load(urllib.request.urlopen(url, timeout=12)); data['tradition']=trad; data['calendar']=cal; data['translation']=trans; data['civil_date']=key; path.write_text(json.dumps(data)+'\\n')\n"
+        + " except Exception:\n"
+        + "  data=json.loads(path.read_text()) if path.exists() else None\n"
+        + " if data is not None: out[key]=data\n"
+        + "print(json.dumps(out))",
+      tradition, calendar, translation, stateDir,
+      String(today.getFullYear()), String(today.getMonth() + 1), String(today.getDate())
+    ]
+    weekFetchProc.running = true
   }
 
   function openUrl(url) {
@@ -195,7 +225,8 @@ Panel {
   function saveSettings() {
     settingsFile.setText(JSON.stringify({
       tradition: tradition,
-      calendar: calendar
+      calendar: calendar,
+      translation: translation
     }, null, 2) + "\n")
   }
 
@@ -203,6 +234,7 @@ Panel {
     var parsed = Model.parseSettings(raw)
     tradition = parsed.tradition
     calendar = parsed.calendar
+    translation = parsed.translation
     settingsLoaded = true
   }
 
@@ -212,8 +244,10 @@ Panel {
     tradition = next
     saveSettings()
     report = null
+    weekReports = ({})
     lastFetchMs = 0
-    refresh(true)
+    ensureCacheDirProc.command = ["mkdir", "-p", root.cacheDir]
+    ensureCacheDirProc.running = true
   }
 
   function setCalendar(value) {
@@ -222,8 +256,22 @@ Panel {
     calendar = next
     saveSettings()
     report = null
+    weekReports = ({})
     lastFetchMs = 0
-    refresh(true)
+    ensureCacheDirProc.command = ["mkdir", "-p", root.cacheDir]
+    ensureCacheDirProc.running = true
+  }
+
+  function setTranslation(value) {
+    var next = Model.normalizeTranslation(value)
+    if (next === translation) return
+    translation = next
+    saveSettings()
+    report = null
+    weekReports = ({})
+    lastFetchMs = 0
+    ensureCacheDirProc.command = ["mkdir", "-p", root.cacheDir]
+    ensureCacheDirProc.running = true
   }
 
   function loadChecklist(raw) {
@@ -239,6 +287,7 @@ Panel {
     if (nextKey === todayKey) return
     today = date
     report = null
+    weekReports = ({})
     storyImages = []
     storyImageRequestKey = ""
     lastFetchMs = 0
@@ -247,6 +296,7 @@ Panel {
     cacheFile.reload()
     refreshTimer.restart()
     root.refresh(true)
+    root.refreshWeek()
   }
 
   Process {
@@ -261,6 +311,32 @@ Panel {
     id: clipboardProc
   }
 
+  Process {
+    id: ensureCacheDirProc
+    onExited: function(exitCode) {
+      cacheFile.reload()
+      checklistFile.reload()
+      root.refresh(true)
+      root.refreshWeek()
+    }
+  }
+
+  Process {
+    id: weekFetchProc
+
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var parsed = JSON.parse(String(text || "{}"))
+          root.weekReports = parsed && typeof parsed === "object" ? parsed : ({})
+        } catch (error) {
+          root.weekReports = ({})
+        }
+      }
+    }
+  }
+
   FileView {
     id: settingsFile
     path: root.settingsPath
@@ -269,15 +345,13 @@ Panel {
     printErrors: false
     onLoaded: {
       root.applySettings(text())
-      cacheFile.reload()
-      checklistFile.reload()
-      root.refresh(true)
+      ensureCacheDirProc.command = ["mkdir", "-p", root.cacheDir]
+      ensureCacheDirProc.running = true
     }
     onLoadFailed: {
       root.applySettings("")
-      cacheFile.reload()
-      checklistFile.reload()
-      root.refresh(true)
+      ensureCacheDirProc.command = ["mkdir", "-p", root.cacheDir]
+      ensureCacheDirProc.running = true
     }
   }
 
@@ -290,7 +364,7 @@ Panel {
     onLoaded: {
       var parsed = Model.parseReport(text())
       if (!root.report && Model.reportMatchesDate(parsed, root.today, root.calendar)
-        && Model.reportMatchesSettings(parsed, root.tradition, root.calendar)) root.report = parsed
+        && Model.reportMatchesSettings(parsed, root.tradition, root.calendar, root.translation)) root.report = parsed
       root.cacheLoaded = true
     }
     onLoadFailed: root.cacheLoaded = true
@@ -339,7 +413,7 @@ Panel {
           return
         }
 
-        var tagged = Model.tagReport(parsed, root.tradition, root.calendar)
+        var tagged = Model.tagReport(parsed, root.tradition, root.calendar, root.translation)
         root.report = tagged
         root.lastFetchMs = Date.now()
         root.errorMessage = ""
@@ -488,7 +562,7 @@ Panel {
                 spacing: Style.space(4)
 
                 PrayerCheck {
-                  iconText: ""
+                  iconText: "󰂢"
                   tooltipText: "Scripture & Psalter"
                   checked: root.morningComplete
                   foreground: root.contentForeground
@@ -497,7 +571,7 @@ Panel {
                 }
 
                 PrayerCheck {
-                  iconText: ""
+                  iconText: ""
                   iconGap: Style.space(6)
                   tooltipText: "Spiritual Reading"
                   checked: root.eveningComplete
@@ -709,7 +783,7 @@ Panel {
 
                   Text {
                     width: parent.width
-                    text: "DAILY PRAYER"
+                    text: "THIS WEEK"
                     color: Qt.darker(root.contentForeground, 1.4)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.caption
@@ -719,22 +793,21 @@ Panel {
                   }
 
                   Row {
-                    id: prayerWeekRow
+                    id: fastingWeekRow
                     anchors.left: parent.left
-                    spacing: Style.space(8)
+                    spacing: Style.space(6)
 
                     Repeater {
-                      model: root.weekPrayers
+                      model: root.fastingWeek
 
                       Item {
                         required property var modelData
-                        width: prayerDayColumn.implicitWidth
-                        implicitHeight: prayerDayColumn.implicitHeight
+                        width: fastingDayColumn.implicitWidth
+                        implicitHeight: fastingDayColumn.implicitHeight
                         height: implicitHeight
-                        opacity: modelData.future ? 0.45 : 1.0
 
                         Column {
-                          id: prayerDayColumn
+                          id: fastingDayColumn
                           anchors.horizontalCenter: parent.horizontalCenter
                           spacing: Style.space(3)
 
@@ -749,26 +822,43 @@ Panel {
                             font.bold: true
                           }
 
-                          Text {
+                          Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: modelData.complete ? "" : ""
-                            color: modelData.complete
+                            width: Style.space(22)
+                            height: width
+                            radius: Style.cornerRadius > 0 ? 5 : 0
+                            color: modelData.special
+                              ? Style.selectedFillFor(root.contentForeground, Color.accent)
+                              : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.045)
+                            border.width: modelData.today ? Math.max(2, Style.normalBorderWidth * 2) : Style.spacing.hairline
+                            border.color: modelData.today
                               ? Color.accent
-                              : (modelData.today
+                              : Qt.rgba(root.contentForeground.r, root.contentForeground.g, root.contentForeground.b, 0.15)
+
+                            Text {
+                              anchors.centerIn: parent
+                              text: modelData.icon
+                              color: modelData.loaded
                                 ? root.contentForeground
-                                : Qt.darker(root.contentForeground, 1.5))
-                            font.family: root.contentFontFamily
-                            font.pixelSize: Style.font.title
+                                : Qt.darker(root.contentForeground, 1.7)
+                              font.family: root.contentFontFamily
+                              font.pixelSize: Style.font.bodySmall
+                            }
                           }
                         }
 
                         MouseArea {
+                          id: fastingDayMouse
                           anchors.fill: parent
-                          enabled: !modelData.future
-                          hoverEnabled: enabled
+                          hoverEnabled: true
                           scrollGestureEnabled: false
-                          cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                          onClicked: root.togglePrayerDay(modelData.key)
+                          cursorShape: Qt.ArrowCursor
+                        }
+
+                        PanelToolTip {
+                          visible: fastingDayMouse.containsMouse
+                          text: Model.fastingWeekTooltip(modelData)
+                          fontFamily: root.contentFontFamily
                         }
                       }
                     }
@@ -789,34 +879,53 @@ Panel {
               fontFamily: root.contentFontFamily
             }
 
-            Row {
+            Column {
               width: parent.width
-              spacing: Style.space(15)
+              spacing: Style.space(10)
 
-              ToggleGroup {
-                width: (parent.width - parent.spacing) / 2
-                label: "TRADITION"
-                options: [
-                  { value: "slavic", label: "Slavic" },
-                  { value: "greek", label: "Greek" }
-                ]
-                value: root.tradition
-                foreground: root.contentForeground
-                fontFamily: root.contentFontFamily
-                onSelected: function(value) { root.setTradition(value) }
+              Row {
+                width: parent.width
+                spacing: Style.space(15)
+
+                ToggleGroup {
+                  width: (parent.width - parent.spacing) / 2
+                  label: "TRADITION"
+                  options: [
+                    { value: "slavic", label: "Slavic" },
+                    { value: "greek", label: "Greek" }
+                  ]
+                  value: root.tradition
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  onSelected: function(value) { root.setTradition(value) }
+                }
+
+                ToggleGroup {
+                  width: (parent.width - parent.spacing) / 2
+                  label: "RECKONING"
+                  options: [
+                    { value: "julian", label: "Julian" },
+                    { value: "gregorian", label: "Gregorian" }
+                  ]
+                  value: root.calendar
+                  foreground: root.contentForeground
+                  fontFamily: root.contentFontFamily
+                  onSelected: function(value) { root.setCalendar(value) }
+                }
               }
 
               ToggleGroup {
-                width: (parent.width - parent.spacing) / 2
-                label: "RECKONING"
+                width: parent.width
+                label: "TRANSLATION"
                 options: [
-                  { value: "julian", label: "Julian" },
-                  { value: "gregorian", label: "Gregorian" }
+                  { value: "lxx2012-web", label: "LXX/WEB" },
+                  { value: "kjv", label: "KJV" },
+                  { value: "douay-rheims", label: "Douay" }
                 ]
-                value: root.calendar
+                value: root.translation
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
-                onSelected: function(value) { root.setCalendar(value) }
+                onSelected: function(value) { root.setTranslation(value) }
               }
             }
           }
@@ -924,7 +1033,7 @@ Panel {
               foreground: root.sourceLinkForeground
               fontFamily: root.contentFontFamily
               fontSize: Style.font.title
-              onClicked: root.openUrl(Model.orthocalUrl(root.today, root.tradition, root.calendar))
+              onClicked: root.openUrl(Model.orthocalUrl(root.today, root.tradition, root.calendar, root.translation))
             }
           }
 
@@ -1006,7 +1115,7 @@ Panel {
               foreground: root.sourceLinkForeground
               fontFamily: root.contentFontFamily
               fontSize: Style.font.title
-              onClicked: root.openUrl(Model.orthocalUrl(root.today, root.tradition, root.calendar))
+              onClicked: root.openUrl(Model.orthocalUrl(root.today, root.tradition, root.calendar, root.translation))
             }
           }
 

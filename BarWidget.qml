@@ -59,7 +59,8 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: ""
+    text: "☦︎"
+    fontFamily: "Noto Sans Symbols"
 
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.refresh()

@@ -9,6 +9,7 @@ function dateKey(date) {
 
 var TRADITIONS = ["slavic", "greek"]
 var CALENDARS = ["julian", "gregorian"]
+var TRANSLATIONS = ["lxx2012-web", "kjv", "douay-rheims"]
 
 function normalizeTradition(value) {
   return TRADITIONS.indexOf(value) >= 0 ? value : "slavic"
@@ -18,8 +19,12 @@ function normalizeCalendar(value) {
   return CALENDARS.indexOf(value) >= 0 ? value : "gregorian"
 }
 
+function normalizeTranslation(value) {
+  return TRANSLATIONS.indexOf(value) >= 0 ? value : "lxx2012-web"
+}
+
 function defaultSettings() {
-  return { tradition: "slavic", calendar: "gregorian" }
+  return { tradition: "slavic", calendar: "gregorian", translation: "lxx2012-web" }
 }
 
 function parseSettings(raw) {
@@ -27,7 +32,8 @@ function parseSettings(raw) {
     var value = JSON.parse(String(raw || ""))
     return {
       tradition: normalizeTradition(value && value.tradition),
-      calendar: normalizeCalendar(value && value.calendar)
+      calendar: normalizeCalendar(value && value.calendar),
+      translation: normalizeTranslation(value && value.translation)
     }
   } catch (e) {
     return defaultSettings()
@@ -70,16 +76,17 @@ function calendarDateFor(date, calendar) {
 // The {year}/{month}/{day} path segment is always the civil (Gregorian)
 // date to look up — "cal" only controls which calendar's date the response
 // reports back (see reportMatchesDate / calendarDateFor below).
-function apiUrl(date, tradition, calendar) {
+function apiUrl(date, tradition, calendar, translation) {
   return "https://orthocal.info/api/"
     + normalizeTradition(tradition) + "/" + normalizeCalendar(calendar) + "/"
     + date.getFullYear() + "/" + (date.getMonth() + 1) + "/" + date.getDate()
-    + "/?translation=lxx2012-web"
+    + "/?translation=" + normalizeTranslation(translation)
 }
 
-function orthocalUrl(date, tradition, calendar) {
+function orthocalUrl(date, tradition, calendar, translation) {
   return "https://orthocal.info/readings/"
-    + normalizeTradition(tradition) + "/" + normalizeCalendar(calendar) + "/lxx2012-web/"
+    + normalizeTradition(tradition) + "/" + normalizeCalendar(calendar) + "/"
+    + normalizeTranslation(translation) + "/"
     + date.getFullYear() + "/" + (date.getMonth() + 1) + "/" + date.getDate() + "/"
 }
 
@@ -110,18 +117,20 @@ function reportMatchesDate(report, date, calendar) {
     && Number(report.day) === expected.day
 }
 
-function reportMatchesSettings(report, tradition, calendar) {
+function reportMatchesSettings(report, tradition, calendar, translation) {
   return !!report
     && report.tradition === normalizeTradition(tradition)
     && report.calendar === normalizeCalendar(calendar)
+    && report.translation === normalizeTranslation(translation)
 }
 
-function tagReport(report, tradition, calendar) {
+function tagReport(report, tradition, calendar, translation) {
   if (!report) return report
   var tagged = {}
   Object.keys(report).forEach(function(key) { tagged[key] = report[key] })
   tagged.tradition = normalizeTradition(tradition)
   tagged.calendar = normalizeCalendar(calendar)
+  tagged.translation = normalizeTranslation(translation)
   return tagged
 }
 
@@ -339,6 +348,56 @@ function prayerWeek(date, history) {
   return days
 }
 
+
+function weekDates(date) {
+  var current = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  var sunday = new Date(current.getFullYear(), current.getMonth(), current.getDate())
+  sunday.setDate(sunday.getDate() - sunday.getDay())
+  var labels = ["S", "M", "T", "W", "T", "F", "S"]
+  var days = []
+
+  for (var index = 0; index < 7; index++) {
+    var day = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + index)
+    days.push({
+      key: dateKey(day),
+      label: labels[index],
+      date: day,
+      displayDate: day.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      today: dateKey(day) === dateKey(current)
+    })
+  }
+  return days
+}
+
+function fastingWeek(date, reports) {
+  var byKey = reports || {}
+  return weekDates(date).map(function(day) {
+    var report = byKey[day.key] || null
+    var special = specialFastBanner(report)
+    return {
+      key: day.key,
+      label: day.label,
+      displayDate: day.displayDate,
+      today: day.today,
+      report: report,
+      loaded: !!report,
+      icon: report ? fastingRuleIcon(report) : "…",
+      fastText: report ? fastingTitle(report) : "Loading…",
+      title: report ? displayTitle(report) : "Loading calendar…",
+      special: special.visible,
+      specialTitle: special.title
+    }
+  })
+}
+
+function fastingWeekTooltip(day) {
+  if (!day || !day.loaded) return "Loading calendar…"
+  var lines = [day.displayDate + " — " + day.fastText]
+  if (day.specialTitle) lines.push(day.specialTitle)
+  if (day.title) lines.push(day.title)
+  return lines.join("\n")
+}
+
 // Kept for callers that only need the current day's legacy-shaped result.
 function parseChecklist(raw, key) {
   return prayerForDay(parsePrayerHistory(raw, key), key)
@@ -358,6 +417,7 @@ if (typeof module !== "undefined") {
     tagReport: tagReport,
     normalizeTradition: normalizeTradition,
     normalizeCalendar: normalizeCalendar,
+    normalizeTranslation: normalizeTranslation,
     defaultSettings: defaultSettings,
     parseSettings: parseSettings,
     julianDateFor: julianDateFor,
@@ -381,6 +441,9 @@ if (typeof module !== "undefined") {
     prayerForDay: prayerForDay,
     parsePrayerHistory: parsePrayerHistory,
     prayerWeek: prayerWeek,
+    weekDates: weekDates,
+    fastingWeek: fastingWeek,
+    fastingWeekTooltip: fastingWeekTooltip,
     parseChecklist: parseChecklist
   }
 }

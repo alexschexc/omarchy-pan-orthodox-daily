@@ -2,8 +2,7 @@ import QtQuick
 import qs.Commons
 import qs.Ui
 
-// Two-option segmented control, used by the calendar settings section
-// (tradition: Slavic/Greek, reckoning: Julian/Gregorian).
+// Segmented control used by the calendar settings section.
 Column {
   id: group
 
@@ -48,7 +47,7 @@ Column {
         id: option
         required property var modelData
         readonly property bool isSelected: modelData.value === group.value
-        width: (parent.width - parent.spacing) / 2
+        width: (parent.width - parent.spacing * Math.max(0, group.options.length - 1)) / Math.max(1, group.options.length)
         height: parent.height
         radius: Style.cornerRadius
         color: isSelected

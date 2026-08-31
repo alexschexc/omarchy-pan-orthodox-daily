@@ -46,7 +46,7 @@ The widget defaults to the right side of the bar. Move it with Omarchy's bar con
 
 ## Data and dependencies
 
-- **Calendar source:** [Orthocal.info](https://orthocal.info/), using the Slavic/OCA tradition, Gregorian (New) Calendar, and LXX2012 + World English Bible translation.
+- **Calendar source:** [Orthocal.info](https://orthocal.info/), with selectable Slavic/Greek tradition, Julian/Gregorian reckoning, and LXX2012+WEB/KJV/Douay-Rheims scripture translations.
 - **Official links and saint icons:** Daily reading and saint-life pages on [OCA.org](https://www.oca.org/). Matching OCA icons are downloaded automatically when available.
 - **Runtime dependencies:** Omarchy Quattro, `curl`, and Python 3. The Python helper uses only the standard library.
 - **Network access:** The plugin requests daily data from Orthocal and retrieves matching saint images from OCA.org. It sends no analytics and uses no AI services.
