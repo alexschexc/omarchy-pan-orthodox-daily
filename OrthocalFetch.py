@@ -7,7 +7,10 @@ import argparse
 import datetime as dt
 import ipaddress
 import json
+import os
+import secrets
 import socket
+import stat
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -126,13 +129,62 @@ def fetch_report(tradition: str, calendar: str, translation: str, day: dt.date) 
     return report
 
 
-def read_cached_report(path: Path) -> dict[str, Any] | None:
+def read_limited_fd(fd: int) -> bytes:
+    chunks: list[bytes] = []
+    remaining = MAX_RESPONSE_BYTES + 1
+    while remaining > 0:
+        chunk = os.read(fd, min(CHUNK_SIZE, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    data = b"".join(chunks)
+    if len(data) > MAX_RESPONSE_BYTES:
+        raise ValueError("Cached Orthocal response exceeds local byte limit")
+    return data
+
+
+def read_cached_report_at(dir_fd: int, filename: str) -> dict[str, Any] | None:
+    fd = -1
     try:
-        if not path.exists() or path.stat().st_size > MAX_RESPONSE_BYTES:
+        fd = os.open(filename, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dir_fd)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_RESPONSE_BYTES:
             return None
-        return checked_json(path.read_bytes())
+        return checked_json(read_limited_fd(fd))
     except (OSError, ValueError, json.JSONDecodeError):
         return None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+
+def write_cached_report_at(dir_fd: int, filename: str, data: dict[str, Any]) -> None:
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).encode("utf-8") + b"\n"
+    if len(payload) > MAX_RESPONSE_BYTES:
+        raise ValueError("Cached Orthocal response exceeds local byte limit")
+
+    temp_name = f".{filename}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+    fd = -1
+    try:
+        fd = os.open(
+            temp_name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+            0o600,
+            dir_fd=dir_fd,
+        )
+        os.write(fd, payload)
+        os.fsync(fd)
+        os.close(fd)
+        fd = -1
+        os.replace(temp_name, filename, src_dir_fd=dir_fd, dst_dir_fd=dir_fd)
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(temp_name, dir_fd=dir_fd)
+        except FileNotFoundError:
+            pass
 
 
 def command_day(args: argparse.Namespace) -> None:
@@ -143,21 +195,25 @@ def command_day(args: argparse.Namespace) -> None:
 def command_week(args: argparse.Namespace) -> None:
     base = Path(args.state_dir) / "daily" / "orthocal" / args.tradition / args.calendar / args.translation
     base.mkdir(parents=True, exist_ok=True)
-    start = args.date - dt.timedelta(days=(args.date.weekday() + 1) % 7)
-    out: dict[str, Any] = {}
-    for offset in range(7):
-        day = start + dt.timedelta(days=offset)
-        key = day.isoformat()
-        path = base / f"{key}.json"
-        data: dict[str, Any] | None
-        try:
-            data = fetch_report(args.tradition, args.calendar, args.translation, day)
-            path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-        except Exception:
-            data = read_cached_report(path)
-        if isinstance(data, dict):
-            out[key] = data
-    print(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+    dir_fd = os.open(base, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY)
+    try:
+        start = args.date - dt.timedelta(days=(args.date.weekday() + 1) % 7)
+        out: dict[str, Any] = {}
+        for offset in range(7):
+            day = start + dt.timedelta(days=offset)
+            key = day.isoformat()
+            filename = f"{key}.json"
+            data: dict[str, Any] | None
+            try:
+                data = fetch_report(args.tradition, args.calendar, args.translation, day)
+                write_cached_report_at(dir_fd, filename, data)
+            except Exception:
+                data = read_cached_report_at(dir_fd, filename)
+            if isinstance(data, dict):
+                out[key] = data
+        print(json.dumps(out, ensure_ascii=False, separators=(",", ":")))
+    finally:
+        os.close(dir_fd)
 
 
 def parse_date(value: str) -> dt.date:
