@@ -29,6 +29,8 @@ Panel {
   readonly property string saintImageCacheDir: stateDir + "saint-images/"
   readonly property string saintImageScript: Quickshell.env("HOME")
     + "/.config/omarchy/plugins/io.gitlab.alexschex.pan-orthodox-daily/OcaSaintImages.py"
+  readonly property string orthocalFetchScript: Quickshell.env("HOME")
+    + "/.config/omarchy/plugins/io.gitlab.alexschex.pan-orthodox-daily/OrthocalFetch.py"
 
   property var report: null
   property bool cacheLoaded: false
@@ -100,7 +102,13 @@ Panel {
     if (useCache === false && cacheIsFresh) return
 
     errorMessage = ""
-    fetchProc.command = ["curl", "-fsS", "--max-time", "12", Model.apiUrl(today, tradition, calendar, translation)]
+    fetchProc.command = [
+      "python3", orthocalFetchScript, "day",
+      "--tradition", tradition,
+      "--calendar", calendar,
+      "--translation", translation,
+      "--date", todayKey
+    ]
     fetchProc.running = true
   }
 
@@ -108,23 +116,12 @@ Panel {
   function refreshWeek() {
     if (weekFetchProc.running) return
     weekFetchProc.command = [
-      "python3", "-c",
-      "import datetime,json,sys,urllib.request,pathlib; "
-        + "trad,cal,trans,state,y,m,d=sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],int(sys.argv[5]),int(sys.argv[6]),int(sys.argv[7]); "
-        + "base=pathlib.Path(state)/'daily'/'orthocal'/trad/cal/trans; base.mkdir(parents=True, exist_ok=True); "
-        + "today=datetime.date(y,m,d); start=today-datetime.timedelta(days=(today.weekday()+1)%7); out={}; "
-        + "\nfor i in range(7):\n"
-        + " day=start+datetime.timedelta(days=i); key=day.isoformat(); path=base/(key+'.json'); "
-        + " url=f'https://orthocal.info/api/{trad}/{cal}/{day.year}/{day.month}/{day.day}/?translation={trans}'; "
-        + " data=None\n"
-        + " try:\n"
-        + "  data=json.load(urllib.request.urlopen(url, timeout=12)); data['tradition']=trad; data['calendar']=cal; data['translation']=trans; data['civil_date']=key; path.write_text(json.dumps(data)+'\\n')\n"
-        + " except Exception:\n"
-        + "  data=json.loads(path.read_text()) if path.exists() else None\n"
-        + " if data is not None: out[key]=data\n"
-        + "print(json.dumps(out))",
-      tradition, calendar, translation, stateDir,
-      String(today.getFullYear()), String(today.getMonth() + 1), String(today.getDate())
+      "python3", orthocalFetchScript, "week",
+      "--tradition", tradition,
+      "--calendar", calendar,
+      "--translation", translation,
+      "--date", todayKey,
+      "--state-dir", stateDir
     ]
     weekFetchProc.running = true
   }

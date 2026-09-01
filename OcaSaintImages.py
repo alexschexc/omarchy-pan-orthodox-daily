@@ -5,10 +5,13 @@ from __future__ import annotations
 
 import argparse
 import html
+import ipaddress
 import json
 import os
 import re
+import socket
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
@@ -16,6 +19,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 USER_AGENT = "Omarchy Orthodox Daily/1.0 (+https://www.oca.org/)"
+ALLOWED_HOSTS = {"www.oca.org", "images.oca.org"}
+MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+MAX_REDIRECTS = 5
+CHUNK_SIZE = 64 * 1024
 STOP_WORDS = {
     "a", "and", "holy", "in", "late", "martyr", "martyrs", "new", "of",
     "presbyter", "saint", "saints", "st", "the", "venerable",
@@ -37,14 +44,62 @@ class OcaImageParser(HTMLParser):
             self.images.append({"url": source, "alt": alt})
 
 
+def validate_url(url: str) -> None:
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname
+    if parsed.scheme != "https" or host not in ALLOWED_HOSTS:
+        raise ValueError("Refusing non-OCA redirect destination")
+
+    infos = socket.getaddrinfo(host, parsed.port or 443, type=socket.SOCK_STREAM)
+    if not infos:
+        raise ValueError("Could not resolve OCA host")
+    for info in infos:
+        address = info[4][0]
+        ip = ipaddress.ip_address(address)
+        if not ip.is_global:
+            raise ValueError("Refusing private or loopback OCA address")
+
+
+def redirect_count(request: urllib.request.Request) -> int:
+    return int(next(
+        (value for key, value in request.headers.items() if key.lower() == "x-omarchy-redirects"),
+        "0",
+    ))
+
+
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        validate_url(newurl)
+        redirects = redirect_count(req) + 1
+        if redirects > MAX_REDIRECTS:
+            raise urllib.error.HTTPError(req.full_url, code, "Too many redirects", headers, fp)
+        request = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if request is not None:
+            request.add_header("X-Omarchy-Redirects", str(redirects))
+        return request
+
+
+OPENER = urllib.request.build_opener(SafeRedirectHandler)
+
+
 def request_bytes(url: str, timeout: int = 12) -> tuple[bytes, str]:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    validate_url(url)
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "X-Omarchy-Redirects": "0"})
+    data = bytearray()
+    with OPENER.open(request, timeout=timeout) as response:
+        validate_url(response.geturl())
+        length = response.headers.get("Content-Length")
+        if length and int(length) > MAX_RESPONSE_BYTES:
+            raise ValueError("OCA response exceeds local cache limit")
         content_type = response.headers.get_content_type()
-        data = response.read(5 * 1024 * 1024 + 1)
-    if len(data) > 5 * 1024 * 1024:
-        raise ValueError("OCA image exceeds local cache limit")
-    return data, content_type
+        while True:
+            chunk = response.read(min(CHUNK_SIZE, MAX_RESPONSE_BYTES + 1 - len(data)))
+            if not chunk:
+                break
+            data.extend(chunk)
+            if len(data) > MAX_RESPONSE_BYTES:
+                raise ValueError("OCA response exceeds local cache limit")
+    return bytes(data), content_type
 
 
 def normalized_tokens(value: str) -> set[str]:
