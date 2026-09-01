@@ -27,7 +27,7 @@ It is designed to support both Old Calendar and New Calendar parish life by expo
 - Selectable liturgical tradition: Slavic or Greek
 - Selectable calendar reckoning: Julian / Old Calendar or Gregorian / New Calendar
 - Selectable Scripture translation: LXX2012 + WEB, King James Version, or Douay-Rheims
-- Daily fasting rule and major-fast/Pascha banners
+- Daily fasting rule and major-fast/Pascha banners (will eventually add tradiitonal feast rank symbols)
 - Week-at-a-glance fasting and feast preview
 - Reading tracking: Scripture & Psalter and Spiritual Reading
 - Expandable Scripture readings
