@@ -73,8 +73,10 @@ Panel {
   }
 
   function close() {
-    root.setCenterHoverRevealSuppressed(false)
+    // Hide first: the panel must never stay open because the cosmetic
+    // hover-reveal bookkeeping below failed.
     root.controller.hide()
+    root.setCenterHoverRevealSuppressed(false)
   }
 
   function toggle() {
@@ -89,7 +91,12 @@ Panel {
   }
 
   function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+    // Third-party widgets are handed the bar's PluginBarApi facade, where
+    // centerHoverRevealSuppressed is read-only and the setter is a method.
+    // First-party widgets get the bar itself, where the property is writable.
+    if (root.bar && typeof root.bar.setCenterHoverRevealSuppressed === "function")
+      root.bar.setCenterHoverRevealSuppressed(value)
+    else if (root.bar && "centerHoverRevealSuppressed" in root.bar)
       root.bar.centerHoverRevealSuppressed = value
   }
 
