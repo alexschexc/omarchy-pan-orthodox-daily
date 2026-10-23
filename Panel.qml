@@ -73,8 +73,10 @@ Panel {
   }
 
   function close() {
-    root.setCenterHoverRevealSuppressed(false)
+    // Hide first: the panel must never stay open because the cosmetic
+    // hover-reveal bookkeeping below failed.
     root.controller.hide()
+    root.setCenterHoverRevealSuppressed(false)
   }
 
   function toggle() {
@@ -88,9 +90,20 @@ Panel {
     return false
   }
 
+  // Third-party widgets are handed the bar's PluginBarApi facade, where
+  // centerHoverRevealSuppressed is read-only and the setter is a method.
+  // First-party widgets get the bar itself, where the property is writable.
+  // This is cosmetic bookkeeping, so a failure is logged and never propagated:
+  // it must not be able to abort open() or close().
   function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
-      root.bar.centerHoverRevealSuppressed = value
+    try {
+      if (root.bar && typeof root.bar.setCenterHoverRevealSuppressed === "function")
+        root.bar.setCenterHoverRevealSuppressed(value)
+      else if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+        root.bar.centerHoverRevealSuppressed = value
+    } catch (error) {
+      console.warn("pan-orthodox-daily: could not set centerHoverRevealSuppressed: " + error)
+    }
   }
 
   function refresh(useCache) {

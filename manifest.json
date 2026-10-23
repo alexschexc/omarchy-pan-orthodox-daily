@@ -2,9 +2,12 @@
   "schemaVersion": 1,
   "id": "io.gitlab.alexschex.pan-orthodox-daily",
   "name": "Pan-Orthodox Daily",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "Alexander Schex; based on work by Ty Richards and Josh Land",
   "license": "MIT",
+  "homepage": "https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily",
+  "repository": "https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily.git",
+  "bugs": "https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily/-/issues",
   "description": "Pan-Orthodox daily readings, saints, feasts, fasting guidance, and reading checklists",
   "kinds": [
     "bar-widget"

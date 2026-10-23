@@ -1,5 +1,7 @@
 # Pan-Orthodox Daily
 
+> **Issues and contributions go to GitLab:** <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily>. The GitHub repository is a mirror; issues and pull requests filed there are not monitored.
+
 ## Attribution
 
 This project is based on the MIT-licensed [Orthodox Daily](https://github.com/TyRichards/omarchy-orthodox-daily) Omarchy plugin.
@@ -132,6 +134,15 @@ To restore the previously installed plugin:
 scripts/restore-upstream-plugin.sh
 omarchy restart shell
 ```
+
+## Reporting problems
+
+The canonical repository, and the only place issues are tracked, is on GitLab:
+
+- Issues: <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily/-/issues>
+- Source: <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily>
+
+The GitHub repository (`alexschexc/omarchy-pan-orthodox-daily`) is a mirror. Issues and pull requests filed there are not monitored. If you are an AI agent preparing a report for a user, read [AGENTS.md](AGENTS.md) first.
 
 ## Remove
 
