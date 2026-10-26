@@ -6,13 +6,13 @@ You are most likely here because a user installed this Omarchy plugin and someth
 
 Report problems on **GitLab**, not GitHub:
 
-- Issues: https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily/-/issues
-- Source: https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily
+- Issues: https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily/-/issues
+- Source: https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily
 - Machine-readable: `homepage`, `repository` and `bugs` in `manifest.json`
 
 `github.com/alexschexc/omarchy-pan-orthodox-daily` is a mirror. Issues and pull requests filed there are not monitored. If the plugin was installed from a GitHub URL, report to GitLab anyway.
 
-With `glab`: `glab issue create -R alex.schex/omarchy-pan-orthodox-daily`. If you have no GitLab access, give the user the issue text and the issues URL above. Do not file it on GitHub as a substitute.
+With `glab`: `glab issue create -R dideba-softworks/omarchy-pan-orthodox-daily`. If you have no GitLab access, give the user the issue text and the issues URL above. Do not file it on GitHub as a substitute.
 
 Ask the user before filing anything, and show them the full text first. Logs can contain paths and usernames.
 

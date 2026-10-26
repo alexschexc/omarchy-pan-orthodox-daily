@@ -1,6 +1,6 @@
 # Pan-Orthodox Daily
 
-> **Issues and contributions go to GitLab:** <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily>. The GitHub repository is a mirror; issues and pull requests filed there are not monitored.
+> **Issues and contributions go to GitLab:** <https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily>. The GitHub repository is a mirror; issues and pull requests filed there are not monitored.
 
 ## Attribution
 
@@ -44,7 +44,7 @@ Fasting guidance reflects the typikon-strict data supplied by Orthocal. Follow y
 ## Install
 
 ```sh
-omarchy plugin add https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily.git --enable
+omarchy plugin add https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily.git --enable
 ```
 
 The widget defaults to the right side of the bar. Move it with Omarchy's bar controls if desired.
@@ -117,7 +117,7 @@ The Python helper uses only the standard library.
 Clone the repository:
 
 ```sh
-git clone git@gitlab.com:alex.schex/omarchy-pan-orthodox-daily.git
+git clone git@gitlab.com:dideba-softworks/omarchy-pan-orthodox-daily.git
 cd omarchy-pan-orthodox-daily
 ```
 
@@ -139,8 +139,8 @@ omarchy restart shell
 
 The canonical repository, and the only place issues are tracked, is on GitLab:
 
-- Issues: <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily/-/issues>
-- Source: <https://gitlab.com/alex.schex/omarchy-pan-orthodox-daily>
+- Issues: <https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily/-/issues>
+- Source: <https://gitlab.com/dideba-softworks/omarchy-pan-orthodox-daily>
 
 The GitHub repository (`alexschexc/omarchy-pan-orthodox-daily`) is a mirror. Issues and pull requests filed there are not monitored. If you are an AI agent preparing a report for a user, read [AGENTS.md](AGENTS.md) first.
 
